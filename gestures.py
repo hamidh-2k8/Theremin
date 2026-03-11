@@ -104,46 +104,47 @@ class Result():
 
     def getAnnotatedImage(self):
         
-        image = self.image.copy()
-        if image is None:
-            return cv2.putText(placeholder.copy(), time.strftime("%H:%M:%S"), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        try:
+            image = self.image.copy()
+            if image is None:
+                return cv2.putText(placeholder.copy(), time.strftime("%H:%M:%S"), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
-        sidelen = image.shape[0]
-        landmarks = self.raw
-        
-        if landmarks is None:
-            return cv2.putText(image, time.strftime("%H:%M:%S"), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            sidelen = image.shape[0]
+            landmarks = self.raw
+            
+            if landmarks is None:
+                return cv2.putText(image, time.strftime("%H:%M:%S"), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-        for i in range(len(image)):
-            color = (255, 128, 0) # Orange
-            posList = []
+            for i in range(len(landmarks)):
+                color = (255, 128, 0) # Orange
+                posList = np.zeros((len(landmarks), 2), dtype=int)
 
-            if i in [Landmarks.THUMB_BASE, Landmarks.INDEX_BASE, Landmarks.MIDDLE_BASE, Landmarks.RING_BASE, Landmarks.PINKY_BASE]:
-                color = (255, 0, 0) # Red
-            if i in [Landmarks.THUMB_TIP, Landmarks.INDEX_TIP, Landmarks.MIDDLE_TIP, Landmarks.RING_TIP, Landmarks.PINKY_TIP]:
-                color = (0, 255, 0) # Green
-            if i == Landmarks.WRIST:
-                color = (0, 255, 255) # Cyan
+                if i in [Landmarks.THUMB_BASE, Landmarks.INDEX_BASE, Landmarks.MIDDLE_BASE, Landmarks.RING_BASE, Landmarks.PINKY_BASE]:
+                    color = (255, 0, 0) # Red
+                if i in [Landmarks.THUMB_TIP, Landmarks.INDEX_TIP, Landmarks.MIDDLE_TIP, Landmarks.RING_TIP, Landmarks.PINKY_TIP]:
+                    color = (0, 255, 0) # Green
+                if i == Landmarks.WRIST:
+                    color = (0, 255, 255) # Cyan
 
-            cv2.circle(image, (int(landmarks[i].x * sidelen), int(landmarks[i].y * sidelen)), 5, color, -1)
-            posList[i] = (int(landmarks[i].x * sidelen), int(landmarks[i].y * sidelen))
+                cv2.circle(image, (int(landmarks[i].x * sidelen), int(landmarks[i].y * sidelen)), 5, color, -1)
+                posList[i] = (int(landmarks[i].x * sidelen), int(landmarks[i].y * sidelen))
 
-        cv2.polylines(image, [
-            np.array(posList[Landmarks.INDEX_BASE]),
-            np.array(posList[Landmarks.PINKY_BASE]),
-            np.subtract(posList[Landmarks.PINKY_BASE], np.subtract(posList[Landmarks.WRIST], posList[Landmarks.MIDDLE_BASE])),
-            np.subtract(posList[Landmarks.INDEX_BASE], np.subtract(posList[Landmarks.WRIST], posList[Landmarks.MIDDLE_BASE])),
-        ], isClosed=True, color=(255, 255, 255), thickness=2)
-        
-        for i in [Landmarks.INDEX_BASE, Landmarks.MIDDLE_BASE, Landmarks.RING_BASE, Landmarks.PINKY_BASE]:
-            cv2.polylines(image, [
-                np.array(posList[i]),       # BASE
-                np.array(posList[i + 1]),   # KNUCKLE 1
-                np.array(posList[i + 2]),   # KNUCKLE 2
-                np.array(posList[i + 3]),   # TIP
-            ], isClosed=False, color=(255, 255, 255), thickness=1)
-
-        return image
+            # cv2.polylines(image, [
+            #     np.array(posList[Landmarks.INDEX_BASE]),
+            #     np.array(posList[Landmarks.PINKY_BASE]),
+            #     np.subtract(posList[Landmarks.PINKY_BASE], np.subtract(posList[Landmarks.WRIST], posList[Landmarks.MIDDLE_BASE])),
+            #     np.subtract(posList[Landmarks.INDEX_BASE], np.subtract(posList[Landmarks.WRIST], posList[Landmarks.MIDDLE_BASE])),
+            # ], isClosed=True, color=(255, 255, 255), thickness=2)
+            
+            for i in [Landmarks.INDEX_BASE, Landmarks.MIDDLE_BASE, Landmarks.RING_BASE, Landmarks.PINKY_BASE]:
+                cv2.polylines(image, [
+                    np.array(posList[i]),       # BASE
+                    np.array(posList[i + 1]),   # KNUCKLE 1
+                    np.array(posList[i + 2]),   # KNUCKLE 2
+                    np.array(posList[i + 3]),   # TIP
+                ], isClosed=False, color=(255, 255, 255), thickness=1)
+        finally:
+            return image
 
 def distance(p1, p2):
     return np.linalg.norm(np.array((p1.x, p1.y)) - np.array((p2.x, p2.y)))

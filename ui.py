@@ -3,7 +3,7 @@ import tracker
 import logging
 import faulthandler
 from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, Qt
 from PySide6 import QtWidgets as qtw
 
 logging.basicConfig(level=logging.INFO)
@@ -15,8 +15,10 @@ class HeaderBar(qtw.QWidget):
         super().__init__()
 
         layout = qtw.QHBoxLayout()
-        layout.addWidget(qtw.QLabel("Theremin Control"))
-        
+        self.title = qtw.QLabel("Theremin Control")
+        self.title.setStyleSheet("font-weight: bold; font-size: 36px;")
+        layout.addWidget(self.title)
+
         self.startButton = qtw.QPushButton("Start Tracking")
         self.startButton.pressed.connect(self.startTracking)
         layout.addWidget(self.startButton)
@@ -77,38 +79,77 @@ class ConfigPanel(qtw.QWidget):
             "base_id": list(self.deviceList.keys())[self.baseCamSelector.currentIndex()],
             "frame_width": 800,
             "frame_height": 600, # TODO: Add config for these
-            "fps": 30
+            "fps": 60
         }
         tracker.updateConfig(newConfig)
-        
-class ResultPreviews(qtw.QWidget):
+
+class ResultBargraphs(qtw.QWidget):
 
     def __init__(self):
         super().__init__()
-        
-        self.towerPreview = qtw.QLabel()
-        self.basePreview = qtw.QLabel()
-        
-        self.refreshImages()
+
+        layout = qtw.QHBoxLayout()
+        self.setLayout(layout)
+
+        self.barList = {
+            "lift": qtw.QProgressBar(self),
+            "pitch": qtw.QProgressBar(self),
+            "yaw": qtw.QProgressBar(self),
+            "roll": qtw.QProgressBar(self),
+            "indexCurl": qtw.QProgressBar(self),
+            "middleCurl": qtw.QProgressBar(self),
+            "ringCurl": qtw.QProgressBar(self),
+            "pinkyCurl": qtw.QProgressBar(self),
+            "fullCurl": qtw.QProgressBar(self),
+            "spread": qtw.QProgressBar(self),
+            "pinch": qtw.QProgressBar(self)
+        }
+
+        for bar in self.barList.values():
+            bar.setRange(0, 1)
+            bar.setOrientation(Qt.Orientation.Vertical)
+            bar.setTextVisible(False)
+            layout.addWidget(bar)
+
+    def setBars(self, values: dict):
+        print(values)
+        for key, value in values.items():
+            if key in self.barList:
+                self.barList[key].setValue(value)
+
+class ResultPreviews(qtw.QWidget):
+
+    def __init__(self, camType: tracker.CameraType):
+        super().__init__()
+
+        self.camType = camType
+        self.preview = qtw.QLabel()
+
+        self.preview.setStyleSheet("border: 4px solid white;")
+
 
         layout = qtw.QGridLayout()
-        layout.addWidget(qtw.QLabel("Tower Camera Preview:"), 0, 0)
-        layout.addWidget(self.towerPreview, 1, 0)
-        layout.addWidget(qtw.QLabel("Base Camera Preview:"), 0, 1)
-        layout.addWidget(self.basePreview, 1, 1)
+        layout.addWidget(qtw.QLabel(f"{'Tower' if self.camType == tracker.CameraType.TOWER else 'Base'} Camera Preview"), 0, 0)
+        layout.addWidget(self.preview, 1, 0)
         self.setLayout(layout)
+        
+        self.resBars = ResultBargraphs()
+        layout.addWidget(self.resBars, 2, 0)
+
+        self.refreshImages()
         
         self.refreshTimer = QTimer(self)
         self.refreshTimer.timeout.connect(self.refreshImages)
-        self.refreshTimer.start(1000/30)
+        self.refreshTimer.start(1000/60)
 
     def refreshImages(self):
 
-        towerImage = cv2.resize(tracker.towerResult.getAnnotatedImage(), (400, 400))
-        self.towerPreview.setPixmap(QPixmap.fromImage(QImage(towerImage.data, 400, 400, towerImage.shape[2] * 400, QImage.Format_RGB888)))
+        result = tracker.towerResult if self.camType == tracker.CameraType.TOWER else tracker.baseResult
 
-        baseImage = cv2.resize(tracker.baseResult.getAnnotatedImage(), (400, 400))
-        self.basePreview.setPixmap(QPixmap.fromImage(QImage(baseImage.data, 400, 400, baseImage.shape[2] * 400, QImage.Format_RGB888)))
+        image = cv2.resize(result.getAnnotatedImage(), (400, 400))
+        self.preview.setPixmap(QPixmap.fromImage(QImage(image.data, 400, 400, image.shape[2] * 400, QImage.Format_RGB888)))
+        
+        self.resBars.setBars(result.processed)
 
 class MainWindow(qtw.QMainWindow):
     def __init__(self):
@@ -119,7 +160,12 @@ class MainWindow(qtw.QMainWindow):
         self.setCentralWidget(qtw.QWidget())
         self.centralWidget().setLayout(qtw.QVBoxLayout())
         self.centralWidget().layout().addWidget(HeaderBar())
-        self.centralWidget().layout().addWidget(ResultPreviews())
+
+        self.previewGrid = qtw.QGridLayout()
+        self.previewGrid.addWidget(ResultPreviews(tracker.CameraType.TOWER), 0, 0)
+        self.previewGrid.addWidget(ResultPreviews(tracker.CameraType.BASE), 0, 1)
+        self.centralWidget().layout().addLayout(self.previewGrid)
+
         self.centralWidget().layout().addWidget(ConfigPanel())
         LOGGER.info("UI initialized")
         self.show()

@@ -20,19 +20,17 @@ towerResult, baseResult = Result(), Result()
 towerCam, baseCam = None, None
         
 def towerCallback(result, output_image: mp.Image, timestamp_ms: int):
-    if result.hand_landmarks[0]:
+    if len(result.hand_landmarks) > 0:
         towerResult.update(result.hand_landmarks[0])
-        LOGGER.info("Tower camera detected hand landmarks.")
 
 def baseCallback(result, output_image: mp.Image, timestamp_ms: int):
-    if result.hand_landmarks[0]:
+    if len(result.hand_landmarks) > 0:
         baseResult.update(result.hand_landmarks[0])
-        LOGGER.info("Base camera detected hand landmarks.")
 
 # To be changed/saved from UI
 config: dict = {
-    "tower_id": 0,
-    "base_id": 1,
+    "tower_id": "/dev/video0",
+    "base_id": "/dev/video2",
     "frame_width": 800,
     "frame_height": 600,
     "fps": 30
@@ -118,16 +116,16 @@ def trackerThreadLoop(camType: CameraType):
             LOGGER.warning("Could not read frame from camera.")
             continue
 
-        frame = cv2.cvtColor(frame.copy(), cv2.COLOR_BGR2RGB)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         # Crop to centered square
         h, w, _ = frame.shape
         min_dim = min(h, w)
         x = (w - min_dim) // 2
         y = (h - min_dim) // 2
-        frame = frame[y:y + min_dim, x:x + min_dim]
+        frame = np.array(frame[y:y + min_dim, x:x + min_dim], dtype=np.uint8)
 
         result.image = frame
+        
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
 
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.array(frame, dtype=np.uint8))
-
-        # landmarker.detect_async(mp_image, int((time.perf_counter() - trackStartTime) * 1000))
+        landmarker.detect_async(mp_image, int((time.perf_counter() - trackStartTime) * 1000))

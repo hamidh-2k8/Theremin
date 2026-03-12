@@ -18,6 +18,9 @@ LOGGER = logging.getLogger("Tracker")
 
 towerResult, baseResult = Result(), Result()
 towerCam, baseCam = None, None
+
+global trackStartTime
+trackStartTime = time.perf_counter()
         
 def towerCallback(result, output_image: mp.Image, timestamp_ms: int):
     if len(result.hand_landmarks) > 0:
@@ -63,9 +66,6 @@ def startTracking():
 
     if not baseCam.open(config["base_id"]):
         raise Exception("Could not open base camera")
-    
-    global trackStartTime
-    trackStartTime = time.perf_counter()
 
     global towerThread, baseThread
 
@@ -129,3 +129,5 @@ def trackerThreadLoop(camType: CameraType):
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
 
         landmarker.detect_async(mp_image, int((time.perf_counter() - trackStartTime) * 1000))
+
+        time.sleep(0.001) # Prevent loop from running at >1000 Hz

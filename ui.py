@@ -106,16 +106,15 @@ class ResultBargraphs(qtw.QWidget):
         }
 
         for bar in self.barList.values():
-            bar.setRange(0, 1)
+            bar.setRange(0, 100)
             bar.setOrientation(Qt.Orientation.Vertical)
             bar.setTextVisible(False)
             layout.addWidget(bar)
 
     def setBars(self, values: dict):
-        print(values)
         for key, value in values.items():
             if key in self.barList:
-                self.barList[key].setValue(value)
+                self.barList[key].setValue(int(value * 100))
 
 class ResultPreviews(qtw.QWidget):
 

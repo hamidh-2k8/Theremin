@@ -1,0 +1,10 @@
+{
+  "configurations": [
+    {
+      "type": "debugpy",
+      "request": "launch",
+      "name": "Launch GUI",
+      "program": "${workspaceFolder}/ui.py"
+    }
+  ],
+}
